@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "mock": "json-server --watch db.json --port 4000"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -23,6 +24,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "json-server": "^0.17.4",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
