@@ -73,11 +73,20 @@ function DragOverlayContent() {
 
 export default function KanbanBoard() {
   const [tasks, setTasks] = useState<Task[]>(PLACEHOLDER_TASKS);
+  const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [defaultColumnId, setDefaultColumnId] = useState("backlog");
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [cardsPerPage, setCardsPerPage] = useState(5);
-  const tasksByColumn = getTasksByColumn(tasks);
+
+  const filteredTasks = searchQuery.trim()
+    ? tasks.filter(
+        (t) =>
+          t.title.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
+          t.description.toLowerCase().includes(searchQuery.trim().toLowerCase())
+      )
+    : tasks;
+  const tasksByColumn = getTasksByColumn(filteredTasks);
 
   function handleAddTask(columnId?: string) {
     setEditingTask(null);
@@ -158,7 +167,10 @@ export default function KanbanBoard() {
       </Box>
 
       <Box sx={{ mb: 2 }}>
-        <TaskSearchBar />
+        <TaskSearchBar
+          value={searchQuery}
+          onChange={setSearchQuery}
+        />
       </Box>
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
