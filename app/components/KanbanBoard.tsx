@@ -14,6 +14,7 @@ import {
   Button,
   Card,
   CardContent,
+  CircularProgress,
   FormControl,
   InputLabel,
   MenuItem,
@@ -26,11 +27,11 @@ import {
   COLUMNS,
   KanbanColumn,
   getTasksByColumn,
-  PLACEHOLDER_TASKS,
   TaskDialog,
   TaskSearchBar,
 } from "./kanban";
 import type { Task } from "./kanban";
+import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from "@/app/hooks/useTasks";
 
 const COLUMN_IDS = new Set(COLUMNS.map((c) => c.id));
 
@@ -72,7 +73,11 @@ function DragOverlayContent() {
 }
 
 export default function KanbanBoard() {
-  const [tasks, setTasks] = useState<Task[]>(PLACEHOLDER_TASKS);
+  const { data: tasks = [], isLoading, error } = useTasks();
+  const createTaskMutation = useCreateTask();
+  const updateTaskMutation = useUpdateTask();
+  const deleteTaskMutation = useDeleteTask();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [defaultColumnId, setDefaultColumnId] = useState("backlog");
@@ -81,7 +86,7 @@ export default function KanbanBoard() {
 
   const filteredTasks = searchQuery.trim()
     ? tasks.filter(
-        (t) =>
+        (t: Task) =>
           t.title.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
           t.description.toLowerCase().includes(searchQuery.trim().toLowerCase())
       )
@@ -101,26 +106,25 @@ export default function KanbanBoard() {
   }
 
   function handleDeleteTask(task: Task) {
-    setTasks((prev) => prev.filter((t) => t.id !== task.id));
+    deleteTaskMutation.mutate(task.id);
   }
 
   function handleSaveTask(data: { id?: string; title: string; description: string; column: string }) {
     if (data.id) {
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === data.id
-            ? { ...t, title: data.title, description: data.description, column: data.column }
-            : t
-        )
-      );
+      updateTaskMutation.mutate({
+        id: data.id,
+        updates: {
+          title: data.title,
+          description: data.description,
+          column: data.column,
+        },
+      });
     } else {
-      const newTask: Task = {
-        id: crypto.randomUUID(),
+      createTaskMutation.mutate({
         title: data.title,
         description: data.description,
         column: data.column,
-      };
-      setTasks((prev) => [...prev, newTask]);
+      });
     }
     setEditingTask(null);
   }
@@ -134,8 +138,24 @@ export default function KanbanBoard() {
     const targetColumnId = getTargetColumnId(over?.id as string, tasks);
     if (!targetColumnId) return;
     const taskId = String(active.id);
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, column: targetColumnId } : t))
+    updateTaskMutation.mutate({ id: taskId, updates: { column: targetColumnId } });
+  }
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 400 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Typography color="error">
+          Failed to load tasks. Make sure the API is running (pnpm mock).
+        </Typography>
+      </Box>
     );
   }
 
