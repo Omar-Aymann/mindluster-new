@@ -1,35 +1,49 @@
 "use client";
 
-import { Box, Button, Chip, IconButton, Paper, Pagination, Typography } from "@mui/material";
+import { Box, Chip, IconButton, Paper, Pagination, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import { useEffect, useState } from "react";
 import TaskCard from "./TaskCard";
 import type { ColumnDef, Task } from "./types";
 import { useDroppable } from "@dnd-kit/core";
 
+const COLUMN_MAX_HEIGHT = 480;
+const CARDS_PER_PAGE = 5;
+
 type KanbanColumnProps = {
   column: ColumnDef;
   tasks: Task[];
+  cardsPerPage?: number;
   onAddTask?: (columnId: string) => void;
   onEditTask?: (task: Task) => void;
   onDeleteTask?: (task: Task) => void;
-  onLoadMore?: (columnId: string) => void;
 };
 
 export default function KanbanColumn({
   column,
   tasks,
+  cardsPerPage = CARDS_PER_PAGE,
   onAddTask,
   onEditTask,
   onDeleteTask,
-  onLoadMore,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(tasks.length / cardsPerPage));
+  const startIdx = (page - 1) * cardsPerPage;
+  const visibleTasks = tasks.slice(startIdx, startIdx + cardsPerPage);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(Math.max(1, totalPages));
+  }, [page, totalPages]);
+
   return (
     <Paper
       elevation={0}
       sx={{
         flex: "0 0 300px",
         minWidth: 300,
+        maxHeight: COLUMN_MAX_HEIGHT,
         borderRadius: 2,
         border: "1px solid",
         borderColor: isOver ? "primary.main" : "divider",
@@ -87,7 +101,7 @@ export default function KanbanColumn({
           minHeight: 0,
         }}
       >
-        {tasks.map((task) => (
+        {visibleTasks.map((task) => (
           <TaskCard
             key={task.id}
             task={task}
@@ -96,23 +110,28 @@ export default function KanbanColumn({
           />
         ))}
 
-        <Box
-          sx={{
-            mt: "auto",
-            pt: 1.5,
-            borderTop: "1px solid",
-            borderColor: "divider",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 1,
-          }}
-        >
-          <Button size="small" variant="text" fullWidth onClick={() => onLoadMore?.(column.id)}>
-            Load more
-          </Button>
-          <Pagination count={3} size="small" color="primary" hidePrevButton hideNextButton />
-        </Box>
+        {totalPages > 1 && (
+          <Box
+            sx={{
+              mt: "auto",
+              pt: 1.5,
+              borderTop: "1px solid",
+              borderColor: "divider",
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={(_, value) => setPage(value)}
+              size="small"
+              color="primary"
+              showFirstButton
+              showLastButton
+            />
+          </Box>
+        )}
       </Box>
     </Paper>
   );

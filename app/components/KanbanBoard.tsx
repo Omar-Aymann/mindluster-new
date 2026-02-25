@@ -9,7 +9,18 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { Box, Card, CardContent, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Typography,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
 import { memo, useState } from "react";
 import {
   COLUMNS,
@@ -62,7 +73,48 @@ function DragOverlayContent() {
 
 export default function KanbanBoard() {
   const [tasks, setTasks] = useState<Task[]>(PLACEHOLDER_TASKS);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [defaultColumnId, setDefaultColumnId] = useState("backlog");
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [cardsPerPage, setCardsPerPage] = useState(5);
   const tasksByColumn = getTasksByColumn(tasks);
+
+  function handleAddTask(columnId?: string) {
+    setEditingTask(null);
+    setDefaultColumnId(columnId ?? "backlog");
+    setDialogOpen(true);
+  }
+
+  function handleEditTask(task: Task) {
+    setEditingTask(task);
+    setDefaultColumnId(task.column);
+    setDialogOpen(true);
+  }
+
+  function handleDeleteTask(task: Task) {
+    setTasks((prev) => prev.filter((t) => t.id !== task.id));
+  }
+
+  function handleSaveTask(data: { id?: string; title: string; description: string; column: string }) {
+    if (data.id) {
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === data.id
+            ? { ...t, title: data.title, description: data.description, column: data.column }
+            : t
+        )
+      );
+    } else {
+      const newTask: Task = {
+        id: crypto.randomUUID(),
+        title: data.title,
+        description: data.description,
+        column: data.column,
+      };
+      setTasks((prev) => [...prev, newTask]);
+    }
+    setEditingTask(null);
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 0 } })
@@ -80,9 +132,30 @@ export default function KanbanBoard() {
 
   return (
     <Box sx={{ width: "100%", maxWidth: 1600, p: 2, mx: "auto" }}>
-      <Typography variant="h4" fontWeight={600} sx={{ mb: 2 }}>
-        Kanban ToDo
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2, flexWrap: "wrap", gap: 1 }}>
+        <Typography variant="h4" fontWeight={600}>
+          Kanban ToDo
+        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel id="cards-per-page-label">Cards per page</InputLabel>
+            <Select
+              labelId="cards-per-page-label"
+              label="Cards per page"
+              value={cardsPerPage}
+              onChange={(e) => setCardsPerPage(Number(e.target.value))}
+            >
+              <MenuItem value={3}>3</MenuItem>
+              <MenuItem value={5}>5</MenuItem>
+              <MenuItem value={10}>10</MenuItem>
+              <MenuItem value={20}>20</MenuItem>
+            </Select>
+          </FormControl>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleAddTask()}>
+            Add task
+          </Button>
+        </Box>
+      </Box>
 
       <Box sx={{ mb: 2 }}>
         <TaskSearchBar />
@@ -103,6 +176,10 @@ export default function KanbanBoard() {
               key={col.id}
               column={col}
               tasks={tasksByColumn[col.id] ?? []}
+              cardsPerPage={cardsPerPage}
+              onAddTask={() => handleAddTask(col.id)}
+              onEditTask={handleEditTask}
+              onDeleteTask={handleDeleteTask}
             />
           ))}
         </Box>
@@ -113,10 +190,16 @@ export default function KanbanBoard() {
       </DndContext>
 
       <TaskDialog
-        open={false}
-        onClose={() => {}}
-        title="Add task"
+        open={dialogOpen}
+        onClose={() => {
+          setDialogOpen(false);
+          setEditingTask(null);
+        }}
+        title={editingTask ? "Edit task" : "Add task"}
         columns={COLUMNS}
+        initialColumnId={defaultColumnId}
+        editingTask={editingTask}
+        onSave={handleSaveTask}
       />
     </Box>
   );

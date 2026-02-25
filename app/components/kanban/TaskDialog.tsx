@@ -13,17 +13,24 @@ import {
   Select,
   TextField,
 } from "@mui/material";
+import { useEffect, useState } from "react";
 import type { ColumnDef, Task } from "./types";
+
+export type TaskFormData = {
+  id?: string;
+  title: string;
+  description: string;
+  column: string;
+};
 
 type TaskDialogProps = {
   open: boolean;
   onClose: () => void;
   title: string;
   columns: ColumnDef[];
-  initialTitle?: string;
-  initialDescription?: string;
   initialColumnId?: string;
-  onSave?: (data: { title: string; description: string; column: string }) => void;
+  editingTask?: Task | null;
+  onSave?: (data: TaskFormData) => void;
 };
 
 export default function TaskDialog({
@@ -31,22 +38,60 @@ export default function TaskDialog({
   onClose,
   title: dialogTitle,
   columns,
-  initialTitle = "",
-  initialDescription = "",
   initialColumnId = "backlog",
+  editingTask,
   onSave,
 }: TaskDialogProps) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [column, setColumn] = useState(initialColumnId);
+
+  useEffect(() => {
+    if (open) {
+      if (editingTask) {
+        setTitle(editingTask.title);
+        setDescription(editingTask.description);
+        setColumn(editingTask.column);
+      } else {
+        setTitle("");
+        setDescription("");
+        setColumn(initialColumnId);
+      }
+    }
+  }, [open, initialColumnId, editingTask]);
+
+  function handleSave() {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) return;
+    onSave?.({
+      id: editingTask?.id,
+      title: trimmedTitle,
+      description: description.trim(),
+      column,
+    });
+    onClose();
+  }
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      slotProps={{
+        paper: { sx: { overflow: "hidden" } },
+      }}
+    >
       <DialogTitle>{dialogTitle}</DialogTitle>
-      <DialogContent>
+      <DialogContent sx={{ overflow: "hidden" }}>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
           <TextField
             label="Title"
             fullWidth
             placeholder="Task title"
-            defaultValue={initialTitle}
-            slotProps={{ input: { id: "task-dialog-title" } }}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
           />
           <TextField
             label="Description"
@@ -54,16 +99,16 @@ export default function TaskDialog({
             placeholder="Task description"
             multiline
             rows={3}
-            defaultValue={initialDescription}
-            slotProps={{ input: { id: "task-dialog-description" } }}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
           />
           <FormControl fullWidth>
             <InputLabel id="task-column-label">Column</InputLabel>
             <Select
               labelId="task-column-label"
               label="Column"
-              defaultValue={initialColumnId}
-              slotProps={{ input: { id: "task-dialog-column" } }}
+              value={column}
+              onChange={(e) => setColumn(e.target.value)}
             >
               {columns.map((c) => (
                 <MenuItem key={c.id} value={c.id}>
@@ -78,14 +123,8 @@ export default function TaskDialog({
         <Button onClick={onClose}>Cancel</Button>
         <Button
           variant="contained"
-          onClick={() => {
-            // Caller can read form state or use controlled inputs; here we just notify
-            onSave?.({
-              title: initialTitle,
-              description: initialDescription,
-              column: initialColumnId,
-            });
-          }}
+          onClick={handleSave}
+          disabled={!title.trim()}
         >
           Save
         </Button>
