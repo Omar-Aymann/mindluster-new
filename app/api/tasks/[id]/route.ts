@@ -20,11 +20,11 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   const { id } = await params;
   try {
     const body = await request.json();
-    const task = updateTaskStore(id, {
-      title: body.title,
-      description: body.description,
-      column: body.column,
-    });
+    const updates: Partial<{ title: string; description: string; column: string }> = {};
+    if (body.title !== undefined) updates.title = body.title;
+    if (body.description !== undefined) updates.description = body.description;
+    if (body.column !== undefined) updates.column = body.column;
+    const task = updateTaskStore(id, updates);
     return NextResponse.json(task);
   } catch {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
