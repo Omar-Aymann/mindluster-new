@@ -42,7 +42,21 @@ export function useUpdateTask() {
       id: string;
       updates: Partial<Pick<Task, "title" | "description" | "column">>;
     }) => updateTask(id, updates),
-    onSuccess: () => {
+    onMutate: async ({ id, updates }) => {
+      await queryClient.cancelQueries({ queryKey: tasksQueryKey });
+      const previousTasks = queryClient.getQueryData<Task[]>(tasksQueryKey);
+      queryClient.setQueryData<Task[]>(tasksQueryKey, (old) => {
+        if (!old) return old;
+        return old.map((t) => (t.id === id ? { ...t, ...updates } : t));
+      });
+      return { previousTasks };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousTasks != null) {
+        queryClient.setQueryData(tasksQueryKey, context.previousTasks);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: tasksQueryKey });
     },
   });
