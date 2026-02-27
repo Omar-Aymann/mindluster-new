@@ -66,6 +66,20 @@ export function useDeleteTask() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: deleteTask,
+
+    onMutate: async (id: string) => {
+      const previousTasks = queryClient.getQueryData<Task[]>(tasksQueryKey);
+      queryClient.setQueryData<Task[]>(tasksQueryKey, (old) => {
+        if (!old) return old;
+        return old.filter((t) => t.id !== id);
+      });
+      return { previousTasks };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousTasks != null) {
+        queryClient.setQueryData(tasksQueryKey, context.previousTasks);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tasksQueryKey });
     },
